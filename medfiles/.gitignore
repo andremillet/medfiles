@@ -1,0 +1,23 @@
+# Rust build artifacts
+target/
+
+# Cargo lock file (optional, but for binaries it's ok to commit)
+# Cargo.lock
+
+# User-specific files
+user_info.json
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.swp
