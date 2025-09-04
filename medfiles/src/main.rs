@@ -63,8 +63,11 @@ fn greet() {
     let mut choice = String::new();
     io::stdin().read_line(&mut choice).unwrap();
     let choice = choice.trim();
-    if choice == "1" || choice == "2" {
+    if choice == "1" {
         println!("Recurso ainda em desenvolvimento.");
+    } else if choice == "2" {
+        let prescriptions = conduta_handler();
+        println!("{}", serde_json::to_string_pretty(&prescriptions).unwrap());
     } else {
         println!("Escolha inválida.");
     }
@@ -179,5 +182,47 @@ fn create_user() {
     } else {
         println!("Escolha inválida.");
     }
+}
+
+fn is_prescription(line: &str) -> bool {
+    let prefixes = ["!PRESCREVO", "!INCREMENTO", "!DECREMENTO", "!SUSPENDO", "!DESMAME"];
+    prefixes.iter().any(|&p| line.trim().starts_with(p))
+}
+
+fn prescription_grabber(conduta_lines: Vec<String>) -> Vec<String> {
+    conduta_lines.into_iter().filter(|line| is_prescription(line)).collect()
+}
+
+fn conduta_handler() -> Vec<String> {
+    let mut files = vec![];
+    for entry in fs::read_dir(".").unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.extension() == Some(std::ffi::OsStr::new("med")) {
+            let metadata = entry.metadata().unwrap();
+            let modified = metadata.modified().unwrap();
+            files.push((path, modified));
+        }
+    }
+    files.sort_by_key(|&(_, time)| time);
+    let mut all_prescriptions = vec![];
+    for (path, _) in files {
+        let content = fs::read_to_string(&path).unwrap();
+        let lines: Vec<&str> = content.lines().collect();
+        let mut in_conduta = false;
+        let mut conduta_lines = vec![];
+        for line in lines {
+            if line.trim() == "[CONDUTA]" {
+                in_conduta = true;
+            } else if line.trim().starts_with('[') && in_conduta {
+                break;
+            } else if in_conduta {
+                conduta_lines.push(line.to_string());
+            }
+        }
+        let prescriptions = prescription_grabber(conduta_lines);
+        all_prescriptions.extend(prescriptions);
+    }
+    all_prescriptions
 }
 
