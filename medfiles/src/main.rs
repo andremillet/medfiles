@@ -68,7 +68,7 @@ fn greet() {
         println!("Recurso ainda em desenvolvimento.");
     } else if choice == "2" {
         let prescriptions = conduta_handler();
-        println!("{}", serde_json::to_string_pretty(&prescriptions).unwrap());
+        println!("{}", prescriptions);
     } else {
         println!("Escolha inválida.");
     }
