@@ -29,6 +29,31 @@ struct UserInfo {
     email: String,
 }
 
+#[derive(Serialize)]
+struct Prescription {
+    command: String,
+    medication: String,
+    dosage: String,
+    dosage_observations: String,
+    posologia: String,
+    posology_observations: String,
+    objective: String,
+}
+
+impl From<HashMap<String, String>> for Prescription {
+    fn from(map: HashMap<String, String>) -> Self {
+        Prescription {
+            command: map.get("command").unwrap_or(&"".to_string()).clone(),
+            medication: map.get("medication").unwrap_or(&"".to_string()).clone(),
+            dosage: map.get("dosage").unwrap_or(&"".to_string()).clone(),
+            dosage_observations: map.get("dosage_observations").unwrap_or(&"".to_string()).clone(),
+            posologia: map.get("posologia").unwrap_or(&"".to_string()).clone(),
+            posology_observations: map.get("posology_observations").unwrap_or(&"".to_string()).clone(),
+            objective: map.get("objective").unwrap_or(&"".to_string()).clone(),
+        }
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -231,7 +256,7 @@ fn prescription_handler(prescriptions: Vec<String>) -> String {
     if !is_medication() {
         medication_json_creator();
     }
-    let mut processed = vec![];
+    let mut processed: Vec<Prescription> = vec![];
     for line in prescriptions {
         let item = medication_json_populator(&line);
         processed.push(item);
@@ -247,8 +272,9 @@ fn medication_json_creator() {
     fs::write("medications.json", "[]").unwrap();
 }
 
-fn medication_json_populator(line: &str) -> HashMap<String, String> {
-    medication_list_tokenizer(line)
+fn medication_json_populator(line: &str) -> Prescription {
+    let map = medication_list_tokenizer(line);
+    Prescription::from(map)
 }
 
 fn medication_list_tokenizer(line: &str) -> HashMap<String, String> {
