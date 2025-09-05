@@ -261,7 +261,13 @@ fn prescription_handler(prescriptions: Vec<String>) -> String {
         let item = medication_json_populator(&line);
         processed.push(item);
     }
-    serde_json::to_string_pretty(&processed).unwrap()
+    let (returns, recipes) = prescription_finalizer(processed);
+    // Optionally save recipes to file
+    if !recipes.is_empty() {
+        let recipe_content = recipes.join("\n\n");
+        fs::write("prescription_recipe.txt", recipe_content).unwrap();
+    }
+    returns.join("\n")
 }
 
 fn is_medication() -> bool {
@@ -275,6 +281,30 @@ fn medication_json_creator() {
 fn medication_json_populator(line: &str) -> Prescription {
     let map = medication_list_tokenizer(line);
     Prescription::from(map)
+}
+
+fn prescription_finalizer(items: Vec<Prescription>) -> (Vec<String>, Vec<String>) {
+    let mut prescription_return = vec![];
+    let mut prescription_recipe = vec![];
+    for item in items {
+        if item.command == "PRESCRIBE" {
+            let ret = format!(
+                "ADICIONADO {}, {}, : {} {} à lista de medicações em uso;",
+                item.medication, item.dosage, item.dosage_observations, item.posologia
+            );
+            prescription_return.push(ret);
+
+            let line1 = format!("{} {}", item.medication, item.dosage);
+            let line2 = if item.posology_observations.is_empty() {
+                format!("{} de {}", item.dosage_observations, item.posologia)
+            } else {
+                format!("{} de {}, por {}", item.dosage_observations, item.posologia, item.posology_observations)
+            };
+            let recipe = format!("{}\n{}", line1, line2);
+            prescription_recipe.push(recipe);
+        }
+    }
+    (prescription_return, prescription_recipe)
 }
 
 fn medication_list_tokenizer(line: &str) -> HashMap<String, String> {
