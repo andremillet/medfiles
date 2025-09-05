@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use std::fs;
 use std::io::{self, Write};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use rand::Rng;
 use std::thread;
@@ -193,7 +194,7 @@ fn prescription_grabber(conduta_lines: Vec<String>) -> Vec<String> {
     conduta_lines.into_iter().filter(|line| is_prescription(line)).collect()
 }
 
-fn conduta_handler() -> Vec<String> {
+fn conduta_handler() -> String {
     let mut files = vec![];
     for entry in fs::read_dir(".").unwrap() {
         let entry = entry.unwrap();
@@ -223,6 +224,130 @@ fn conduta_handler() -> Vec<String> {
         let prescriptions = prescription_grabber(conduta_lines);
         all_prescriptions.extend(prescriptions);
     }
-    all_prescriptions
+    prescription_handler(all_prescriptions)
+}
+
+fn prescription_handler(prescriptions: Vec<String>) -> String {
+    if !is_medication() {
+        medication_json_creator();
+    }
+    let mut processed = vec![];
+    for line in prescriptions {
+        let item = medication_json_populator(&line);
+        processed.push(item);
+    }
+    serde_json::to_string_pretty(&processed).unwrap()
+}
+
+fn is_medication() -> bool {
+    fs::metadata("medications.json").is_ok()
+}
+
+fn medication_json_creator() {
+    fs::write("medications.json", "[]").unwrap();
+}
+
+fn medication_json_populator(line: &str) -> HashMap<String, String> {
+    medication_list_tokenizer(line)
+}
+
+fn medication_list_tokenizer(line: &str) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    let trimmed = line.trim_start_matches('!').trim_end_matches(';');
+    let parts: Vec<&str> = trimmed.split_whitespace().collect();
+    let mut idx = 0;
+
+    // Command
+    if idx < parts.len() {
+        let cmd = parts[idx];
+        let command = match cmd {
+            "PRESCREVO" => "PRESCRIBE",
+            "AUMENTO" => "INCREASE",
+            "REDUZO" => "DECREASE",
+            "SUSPENDO" => "SUSPEND",
+            _ => cmd,
+        };
+        map.insert("command".to_string(), command.to_string());
+        idx += 1;
+    }
+
+    // Medication
+    if idx < parts.len() {
+        let mut med = parts[idx].to_string();
+        if med.starts_with('"') || med.starts_with('\'') {
+            let quote = med.chars().next().unwrap();
+            med = med.trim_start_matches(quote).to_string();
+            while idx + 1 < parts.len() && !med.ends_with(quote) {
+                idx += 1;
+                med.push(' ');
+                med.push_str(parts[idx]);
+            }
+            med = med.trim_end_matches(quote).to_string();
+        }
+        map.insert("medication".to_string(), med);
+        idx += 1;
+    }
+
+    // Dosage
+    let mut dosage = "1 UNIDADE".to_string();
+    if idx < parts.len() && !parts[idx].starts_with('[') && !parts[idx].contains(">>") {
+        dosage = parts[idx].to_string();
+        idx += 1;
+    }
+    map.insert("dosage".to_string(), dosage);
+
+    // Dosage observations
+    let mut dosage_obs = String::new();
+    if idx < parts.len() && parts[idx].starts_with('[') {
+        dosage_obs = parts[idx].to_string();
+        idx += 1;
+        while idx < parts.len() && !dosage_obs.ends_with(']') {
+            dosage_obs.push(' ');
+            dosage_obs.push_str(parts[idx]);
+            idx += 1;
+        }
+        dosage_obs = dosage_obs.trim_start_matches('[').trim_end_matches(']').to_string();
+    }
+    map.insert("dosage_observations".to_string(), dosage_obs);
+
+    // Posology
+    let mut posology = String::new();
+    if idx < parts.len() && !parts[idx].contains(">>") {
+        posology = parts[idx].to_string();
+        idx += 1;
+        // If there's a second group
+        if idx < parts.len() && !parts[idx].contains(">>") {
+            posology.push(' ');
+            posology.push_str(parts[idx]);
+            idx += 1;
+        }
+    }
+    map.insert("posologia".to_string(), posology);
+
+    // Posology observations
+    let mut pos_obs = String::new();
+    if idx < parts.len() && parts[idx].starts_with('[') {
+        pos_obs = parts[idx].trim_start_matches('[').trim_end_matches(']').to_string();
+        idx += 1;
+    }
+    map.insert("posology_observations".to_string(), pos_obs);
+
+    // Objective
+    let mut objective = String::new();
+    if idx < parts.len() && parts[idx] == ">>" {
+        idx += 1;
+        while idx < parts.len() {
+            if objective.is_empty() {
+                objective = parts[idx].to_string();
+            } else {
+                objective.push(' ');
+                objective.push_str(parts[idx]);
+            }
+            idx += 1;
+        }
+    }
+    map.insert("objective".to_string(), objective);
+
+    map
 }
 
