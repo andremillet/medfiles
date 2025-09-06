@@ -21,3 +21,8 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.swp
+
+# Other projects (prevent accidental inclusion)
+../prognosys/
+../neuroexam/
+../*
