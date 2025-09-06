@@ -90,7 +90,7 @@ fn greet() {
     if choice == "1" {
         println!("Recurso ainda em desenvolvimento.");
     } else if choice == "2" {
-        let (prescriptions, prescription_returns) = conduta_handler();
+        let (prescriptions, prescription_returns, file_count) = conduta_handler();
         println!("{}", prescriptions);
         print!("Deseja imprimir a prescrição? (s/n): ");
         io::stdout().flush().unwrap();
@@ -106,7 +106,7 @@ fn greet() {
             } else {
                 vec![]
             };
-            prescription_printer(&prescription_returns, &history);
+            prescription_printer(&prescription_returns, &history, file_count);
         }
     } else {
         println!("Escolha inválida.");
@@ -254,7 +254,7 @@ fn prescription_grabber(conduta_lines: Vec<String>) -> Vec<String> {
     conduta_lines.into_iter().filter(|line| is_prescription(line)).collect()
 }
 
-fn conduta_handler() -> (String, Vec<String>) {
+fn medfile_finder() -> Vec<(std::path::PathBuf, std::time::SystemTime)> {
     let mut files = vec![];
     for entry in fs::read_dir(".").unwrap() {
         let entry = entry.unwrap();
@@ -266,6 +266,12 @@ fn conduta_handler() -> (String, Vec<String>) {
         }
     }
     files.sort_by_key(|&(_, time)| time);
+    files
+}
+
+fn conduta_handler() -> (String, Vec<String>, usize) {
+    let files = medfile_finder();
+    let file_count = files.len();
     let mut results = vec![];
     let mut all_changes: Vec<(String, String, String, String, String, String)> = vec![];
     let mut latest_prescription_returns: std::collections::HashMap<String, String> = std::collections::HashMap::new();
@@ -314,7 +320,7 @@ fn conduta_handler() -> (String, Vec<String>) {
 
     let graph = prescription_graphs(&history);
     let filtered_returns: Vec<String> = latest_prescription_returns.values().cloned().collect();
-    (format!("{}\n{}", graph, results.join("\n---\n")), filtered_returns)
+    (format!("{}\n{}", graph, results.join("\n---\n")), filtered_returns, file_count)
 }
 
 fn prescription_handler(prescriptions: Vec<String>, modified: std::time::SystemTime) -> (String, Vec<String>, Vec<(String, String, String, String, String, String)>) {
@@ -442,6 +448,12 @@ fn generate_diff(medication: &str, old: &HashMap<String, String>, new: &Prescrip
     }
 }
 
+fn ansi_to_html(text: &str) -> String {
+    text.replace("\x1b[31m", "<span class=\"removed\">")
+        .replace("\x1b[32m", "<span class=\"added\">")
+        .replace("\x1b[0m", "</span>")
+}
+
 fn parse_dosage(dosage: &str) -> f64 {
     // Simple parser for [number] or [fraction]
     let cleaned = dosage.trim_start_matches('[').trim_end_matches(']').trim();
@@ -466,11 +478,23 @@ fn prescription_finalizer(items: Vec<Prescription>, medications: &mut HashMap<St
     let mut changes = vec![];
     for item in items {
         if item.command == "PRESCRIBE" {
-            let ret = format!(
-                "ADICIONADO {}, {}, : {} {} à lista de medicações em uso;",
-                item.medication, item.dosage, item.dosage_observations, item.posologia
-            );
-            prescription_return.push(ret);
+            let mut diff_lines = vec![];
+            if !item.dosage.is_empty() {
+                diff_lines.push(format!("\x1b[32m+ dosage: {}\x1b[0m", item.dosage));
+            }
+            if !item.dosage_observations.trim().is_empty() {
+                diff_lines.push(format!("\x1b[32m+ dosage_observations: {}\x1b[0m", item.dosage_observations.trim()));
+            }
+            if !item.posologia.is_empty() {
+                diff_lines.push(format!("\x1b[32m+ posologia: {}\x1b[0m", item.posologia));
+            }
+            if !item.posology_observations.trim().is_empty() {
+                diff_lines.push(format!("\x1b[32m+ posology_observations: {}\x1b[0m", item.posology_observations.trim()));
+            }
+            if !diff_lines.is_empty() {
+                let ret = format!("Mudanças para {}:\n{}", item.medication, diff_lines.join("\n"));
+                prescription_return.push(ret);
+            }
 
             let line1 = if item.dosage == "1 UNIDADE" {
                 item.medication.to_uppercase()
@@ -714,94 +738,155 @@ fn prescription_graphs_html(changes: &Vec<(String, String, String, String, Strin
     html
 }
 
-fn ansi_to_html(text: &str) -> String {
-    text.replace("\x1b[31m", "<span class=\"removed\">")
-        .replace("\x1b[32m", "<span class=\"added\">")
-        .replace("\x1b[0m", "</span>")
-}
+
 
 fn generate_html_header(title: &str) -> String {
     format!(r#"<!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>{}</title>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        body {{ font-family: Arial, sans-serif; margin: 40px; }}
-        .prescription {{ border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; }}
-        .changes {{ background-color: #f0f0f0; padding: 10px; border-left: 4px solid #007bff; }}
-        h2 {{ color: #333; }}
-        pre {{ white-space: pre-wrap; }}
-        .removed {{ color: #dc3545; }}
-        .added {{ color: #28a745; }}
+        body {{
+            font-family: 'Ubuntu', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7fa;
+            color: #333;
+            line-height: 1.6;
+        }}
+        .container {{
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }}
+        h1 {{
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            font-weight: 300;
+        }}
+        h2 {{
+            color: #34495e;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            font-weight: 400;
+        }}
+        .prescription {{
+            border: 1px solid #e1e8ed;
+            padding: 25px;
+            margin-bottom: 30px;
+            background: #fafbfc;
+            border-radius: 6px;
+        }}
+        .changes {{
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            border-radius: 0 6px 6px 0;
+        }}
+        pre {{
+            white-space: pre-wrap;
+            font-family: 'Ubuntu', sans-serif;
+            background: #f8f9fa;
+            color: #333;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #e1e8ed;
+            overflow-x: auto;
+        }}
+        .removed {{ color: #e74c3c; font-weight: bold; }}
+        .added {{ color: #27ae60; font-weight: bold; }}
+
         .prescription-list {{
-            padding-left: 20px;
+            padding-left: 0;
+            list-style: none;
         }}
         .prescription-list li {{
-            margin-bottom: 15px;
-            line-height: 1.4;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border: 1px solid #e1e8ed;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }}
         .prescription-list strong {{
             color: #2c3e50;
             font-size: 1.1em;
+            display: block;
+            margin-bottom: 5px;
         }}
         .prescription-timeline {{
-            margin-top: 30px;
+            margin-top: 40px;
         }}
         .prescription-timeline h3 {{
             color: #2c3e50;
-            margin-bottom: 15px;
-            font-size: 1.2em;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            font-weight: 500;
         }}
         .timeline {{
             position: relative;
-            padding-left: 30px;
-            margin-bottom: 30px;
+            padding-left: 40px;
+            margin-bottom: 40px;
         }}
         .timeline::before {{
             content: '';
             position: absolute;
-            left: 15px;
+            left: 20px;
             top: 0;
             bottom: 0;
-            width: 2px;
-            background: #e9ecef;
+            width: 3px;
+            background: #bdc3c7;
         }}
         .timeline-item {{
             position: relative;
-            margin-bottom: 20px;
-            padding-left: 10px;
+            margin-bottom: 25px;
+            padding-left: 20px;
         }}
         .timeline-marker {{
             position: absolute;
-            left: -22px;
-            width: 30px;
-            height: 30px;
+            left: -25px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             color: white;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            font-size: 1.2em;
         }}
-        .timeline-marker.initial {{ background: #28a745; }}
-        .timeline-marker.increase {{ background: #007bff; }}
-        .timeline-marker.decrease {{ background: #dc3545; }}
-        .timeline-marker.other {{ background: #6c757d; }}
+        .timeline-marker.initial {{ background: #27ae60; }}
+        .timeline-marker.increase {{ background: #3498db; }}
+        .timeline-marker.decrease {{ background: #e74c3c; }}
+        .timeline-marker.other {{ background: #95a5a6; }}
         .timeline-content {{
-            background: #f8f9fa;
-            padding: 10px 15px;
+            background: #ecf0f1;
+            padding: 15px 20px;
             border-radius: 6px;
-            border-left: 3px solid #dee2e6;
+            border-left: 4px solid #3498db;
         }}
         .timeline-content strong {{
-            color: #495057;
+            color: #2c3e50;
+            font-weight: 600;
         }}
     </style>
 </head>
 <body>
-    <h1>{}</h1>
+    <div class="container">
+        <h1>{}</h1>
 "#, title, title)
 }
 
@@ -833,7 +918,7 @@ fn generate_timeline_section(graph_html: &str) -> String {
 }
 
 fn generate_html_footer() -> String {
-    "\n</body>\n</html>".to_string()
+    "\n    </div>\n</body>\n</html>".to_string()
 }
 
 fn generate_complete_html(
@@ -849,7 +934,7 @@ fn generate_complete_html(
     html
 }
 
-fn prescription_printer(prescription_returns: &[String], graph_data: &Vec<(String, String, String, String, String, String)>) {
+fn prescription_printer(prescription_returns: &[String], graph_data: &Vec<(String, String, String, String, String, String)>, file_count: usize) {
     // Read prescription recipe content
     let recipe_content = fs::read_to_string("prescription_recipe.txt")
         .unwrap_or_else(|_| "Nenhuma receita encontrada.".to_string());
@@ -872,7 +957,13 @@ fn prescription_printer(prescription_returns: &[String], graph_data: &Vec<(Strin
     let graph_html = prescription_graphs_html(graph_data);
 
     // Create HTML content using modular functions
-    let html_content = generate_complete_html(&recipe_list_html, &returns_content, &graph_html);
+    let mut html_content = generate_html_header("Prescrição Médica");
+    html_content.push_str(&generate_recipe_section(&recipe_list_html));
+    if file_count >= 2 {
+        html_content.push_str(&generate_changes_section(&returns_content));
+        html_content.push_str(&generate_timeline_section(&graph_html));
+    }
+    html_content.push_str(&generate_html_footer());
 
     // Create temporary HTML file
     let temp_file = "temp_prescription.html";
