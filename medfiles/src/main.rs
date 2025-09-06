@@ -211,7 +211,7 @@ fn create_user() {
 }
 
 fn is_prescription(line: &str) -> bool {
-    let prefixes = ["!PRESCREVO", "!INCREMENTO", "!DECREMENTO", "!SUSPENDO", "!DESMAME"];
+    let prefixes = ["!PRESCREVO", "!AUMENTO", "!INCREMENTO", "!DECREMENTO", "!SUSPENDO", "!DESMAME"];
     prefixes.iter().any(|&p| line.trim().starts_with(p))
 }
 
@@ -231,8 +231,9 @@ fn conduta_handler() -> String {
         }
     }
     files.sort_by_key(|&(_, time)| time);
-    let mut all_prescriptions = vec![];
-    for (path, _) in files {
+    let mut results = vec![];
+    let mut all_changes: Vec<(String, String, String, String, String, String)> = vec![];
+    for (path, modified) in files {
         let content = fs::read_to_string(&path).unwrap();
         let lines: Vec<&str> = content.lines().collect();
         let mut in_conduta = false;
@@ -247,27 +248,52 @@ fn conduta_handler() -> String {
             }
         }
         let prescriptions = prescription_grabber(conduta_lines);
-        all_prescriptions.extend(prescriptions);
+        let (output, changes) = prescription_handler(prescriptions, modified);
+        all_changes.extend(changes);
+        if !output.is_empty() {
+            let datetime = chrono::DateTime::<chrono::Local>::from(modified);
+            let date_str = datetime.format("%d/%m/%Y").to_string();
+            results.push(format!("Arquivo: {} (Modificado: {})\n{}", path.display(), date_str, output));
+        }
     }
-    prescription_handler(all_prescriptions)
+    // Append current changes to history.json
+    let history_path = "history.json";
+    let mut history: Vec<(String, String, String, String, String, String)> = if std::path::Path::new(history_path).exists() {
+        let content = fs::read_to_string(history_path).unwrap_or("[]".to_string());
+        serde_json::from_str(&content).unwrap_or(vec![])
+    } else {
+        vec![]
+    };
+    history.extend(all_changes);
+    let history_json = serde_json::to_string_pretty(&history).unwrap();
+    fs::write(history_path, history_json).unwrap();
+
+    let graph = prescription_graphs(&history);
+    format!("{}\n{}", graph, results.join("\n---\n"))
 }
 
-fn prescription_handler(prescriptions: Vec<String>) -> String {
-    if !is_medication() {
-        medication_json_creator();
-    }
+fn prescription_handler(prescriptions: Vec<String>, modified: std::time::SystemTime) -> (String, Vec<(String, String, String, String, String, String)>) {
+    let mut medications: HashMap<String, HashMap<String, String>> = if is_medication() {
+        let content = fs::read_to_string("medications.json").unwrap_or("".to_string());
+        serde_json::from_str(&content).unwrap_or(HashMap::new())
+    } else {
+        HashMap::new()
+    };
     let mut processed: Vec<Prescription> = vec![];
     for line in prescriptions {
         let item = medication_json_populator(&line);
         processed.push(item);
     }
-    let (returns, recipes) = prescription_finalizer(processed);
+    let (returns, recipes, changes) = prescription_finalizer(processed, &mut medications, chrono::DateTime::<chrono::Local>::from(modified));
+    // Save updated medications
+    let json = serde_json::to_string_pretty(&medications).unwrap();
+    fs::write("medications.json", json).unwrap();
     // Optionally save recipes to file
     if !recipes.is_empty() {
         let recipe_content = recipes.join("\n\n");
         fs::write("prescription_recipe.txt", recipe_content).unwrap();
     }
-    returns.join("\n")
+    (returns.join("\n"), changes)
 }
 
 fn is_medication() -> bool {
@@ -283,9 +309,116 @@ fn medication_json_populator(line: &str) -> Prescription {
     Prescription::from(map)
 }
 
-fn prescription_finalizer(items: Vec<Prescription>) -> (Vec<String>, Vec<String>) {
+fn calculate_difference(current: &Prescription, prev: &HashMap<String, String>) -> String {
+    // Simple parsing for dosage_observations
+    let current_dosage = parse_dosage(&current.dosage_observations);
+    let prev_dosage = parse_dosage(&prev.get("dosage_observations").unwrap_or(&"".to_string()));
+    let diff = current_dosage - prev_dosage;
+    format!("{:.1} COMPRIMIDOS", diff)
+}
+
+fn prescription_graphs(changes: &Vec<(String, String, String, String, String, String)>) -> String {
+    if changes.is_empty() {
+        return String::new();
+    }
+    let mut medications: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for (med, _, _, _, _, _) in changes {
+        medications.insert(med.clone());
+    }
+    let mut sorted_changes: Vec<_> = changes.iter().map(|(med, time_str, field, old, new, cmd)| {
+        let time = chrono::NaiveDateTime::parse_from_str(time_str, "%Y-%m-%d %H:%M:%S").unwrap_or(chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap());
+        (med.clone(), time, field.clone(), old.clone(), new.clone(), cmd.clone())
+    }).collect::<Vec<_>>();
+    sorted_changes.sort_by_key(|(_, time, _, _, _, _)| *time);
+    let mut unique_times: Vec<_> = sorted_changes.iter().map(|(_, time, _, _, _, _)| *time).collect();
+    unique_times.sort();
+    unique_times.dedup();
+    let mut graph = String::from("Gráfico de Evolução das Prescrições:\n");
+    for med in medications {
+        graph.push_str(&format!("{}: ", med));
+        let med_changes: Vec<_> = sorted_changes.iter().filter(|(m, _, _, _, _, _)| m == &med).collect();
+        // Group by timestamp and command
+        let mut unique_events: Vec<(chrono::NaiveDateTime, String)> = vec![];
+        for (_, time, _, _, _, command) in &med_changes {
+            if !unique_events.iter().any(|(t, c)| t == time && c == command) {
+                unique_events.push((*time, command.clone()));
+            }
+        }
+        unique_events.sort_by_key(|(time, _)| *time);
+        let spacing = if unique_events.len() > 1 { 80 / (unique_events.len() - 1) } else { 10 };
+        let mut line = String::new();
+        let mut positions = vec![];
+        for (i, (time, command)) in unique_events.iter().enumerate() {
+            let pos = i * spacing;
+            let date_str = time.format("%d/%m").to_string();
+            let symbol = match command.as_str() {
+                "INCREASE" => '▲',
+                "DECREASE" => '▼',
+                "PRESCRIBE" => '●',
+                _ => '●',
+            };
+            let label = format!("{}{}", date_str, symbol);
+            positions.push((pos, label));
+        }
+        let mut last_pos = 0;
+        for (pos, label) in positions {
+            for _ in last_pos..pos {
+                line.push('─');
+            }
+            line.push_str(&label);
+            last_pos = pos + label.len();
+        }
+        graph.push_str(&line);
+        graph.push('\n');
+    }
+
+    graph
+}
+
+fn generate_diff(medication: &str, old: &HashMap<String, String>, new: &Prescription) -> String {
+    let mut diff_lines = vec![];
+    let fields = vec![
+        ("dosage", &new.dosage),
+        ("dosage_observations", &new.dosage_observations),
+        ("posologia", &new.posologia),
+        ("posology_observations", &new.posology_observations),
+    ];
+    for (field, new_value) in fields {
+        let old_value = old.get(field).map(|s| s.as_str()).unwrap_or("");
+        if old_value != new_value {
+            diff_lines.push(format!("\x1b[31m- {}: {}\x1b[0m", field, old_value));
+            diff_lines.push(format!("\x1b[32m+ {}: {}\x1b[0m", field, new_value));
+        }
+    }
+    if diff_lines.is_empty() {
+        format!("Nenhuma mudança detectada para {}", medication)
+    } else {
+        format!("Mudanças para {}:\n{}", medication, diff_lines.join("\n"))
+    }
+}
+
+fn parse_dosage(dosage: &str) -> f64 {
+    // Simple parser for [number] or [fraction]
+    let cleaned = dosage.trim_start_matches('[').trim_end_matches(']').trim();
+    let first_part = cleaned.split_whitespace().next().unwrap_or("");
+    if let Some(slash_pos) = first_part.find('/') {
+        let parts: Vec<&str> = first_part.split('/').collect();
+        if parts.len() == 2 {
+            let num: f64 = parts[0].parse().unwrap_or(0.0);
+            let den: f64 = parts[1].parse().unwrap_or(1.0);
+            num / den
+        } else {
+            first_part.parse().unwrap_or(0.0)
+        }
+    } else {
+        first_part.parse().unwrap_or(0.0)
+    }
+}
+
+fn prescription_finalizer(items: Vec<Prescription>, medications: &mut HashMap<String, HashMap<String, String>>, file_time: chrono::DateTime<chrono::Local>) -> (Vec<String>, Vec<String>, Vec<(String, String, String, String, String, String)>) {
     let mut prescription_return = vec![];
     let mut prescription_recipe = vec![];
+    let mut changes = vec![];
     for item in items {
         if item.command == "PRESCRIBE" {
             let ret = format!(
@@ -302,9 +435,48 @@ fn prescription_finalizer(items: Vec<Prescription>) -> (Vec<String>, Vec<String>
             };
             let recipe = format!("{}\n{}", line1, line2);
             prescription_recipe.push(recipe);
+
+            // Save to medications
+            let mut med_map = HashMap::new();
+            med_map.insert("dosage".to_string(), item.dosage.clone());
+            med_map.insert("dosage_observations".to_string(), item.dosage_observations.clone());
+            med_map.insert("posologia".to_string(), item.posologia.clone());
+            med_map.insert("posology_observations".to_string(), item.posology_observations.clone());
+            medications.insert(item.medication.clone(), med_map);
+
+            // Add to changes for initial prescription
+            let timestamp_str = file_time.format("%Y-%m-%d %H:%M:%S").to_string();
+            changes.push((item.medication.clone(), timestamp_str, "initial".to_string(), "".to_string(), item.dosage_observations.clone(), item.command.clone()));
+        } else if item.command == "INCREASE" {
+            if let Some(prev) = medications.get(&item.medication) {
+                let diff_output = generate_diff(&item.medication, prev, &item);
+                prescription_return.push(diff_output);
+                // Collect changes for graph
+                let fields = vec![
+                    ("dosage", item.dosage.clone()),
+                    ("dosage_observations", item.dosage_observations.clone()),
+                    ("posologia", item.posologia.clone()),
+                    ("posology_observations", item.posology_observations.clone()),
+                ];
+                for (field, new_value) in fields {
+                    let old_value = prev.get(field).map(|s| s.as_str()).unwrap_or("");
+                    if old_value != new_value {
+                        let timestamp_str = file_time.format("%Y-%m-%d %H:%M:%S").to_string();
+                        changes.push((item.medication.clone(), timestamp_str, field.to_string(), old_value.to_string(), new_value, item.command.clone()));
+                    }
+                }
+
+                // Update medications
+                let mut med_map = HashMap::new();
+                med_map.insert("dosage".to_string(), item.dosage.clone());
+                med_map.insert("dosage_observations".to_string(), item.dosage_observations.clone());
+                med_map.insert("posologia".to_string(), item.posologia.clone());
+                med_map.insert("posology_observations".to_string(), item.posology_observations.clone());
+                medications.insert(item.medication.clone(), med_map);
+            }
         }
     }
-    (prescription_return, prescription_recipe)
+    (prescription_return, prescription_recipe, changes)
 }
 
 fn medication_list_tokenizer(line: &str) -> HashMap<String, String> {
