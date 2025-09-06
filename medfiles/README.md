@@ -7,6 +7,8 @@ MedFiles é um processador de arquivos médicos (.med) escrito em Rust. Ele perm
 - **Configuração de Usuário**: Configure sua conta com nome, CPF, telefone e email. Verificação por token via email.
 - **Interface CLI**: Comando simples para interagir com o sistema.
 - **Processamento de Arquivos .med**: Estrutura os dados médicos em seções para fácil acesso.
+- **Geração de Prescrições HTML**: Converte prescrições médicas em arquivos HTML formatados com gráficos de evolução.
+- **Template HTML**: Visualize um exemplo do template em [andremillet.github.io/medfiles](https://andremillet.github.io/medfiles)
 
 ## Instalação
 
@@ -40,6 +42,18 @@ Será solicitado o que deseja fazer (ver atendimentos, ver prescrições - recur
 ### Comandos Disponíveis
 - `medfiles config`: Configura ou verifica a conta do usuário.
 - `medfiles`: Menu principal (requer usuário configurado).
+
+## Template HTML
+
+O MedFiles gera prescrições médicas em formato HTML com design responsivo e gráficos de evolução das medicações. Um exemplo do template pode ser visualizado em:
+
+**[andremillet.github.io/medfiles](https://andremillet.github.io/medfiles)**
+
+Este link exibe o arquivo `index.html` hospedado no GitHub Pages, mostrando:
+- Lista formatada das medicações prescritas
+- Gráfico de evolução temporal das dosagens
+- Alterações destacadas com cores (vermelho para remoções, verde para adições)
+- Design responsivo compatível com dispositivos móveis
 
 ## Estrutura dos Arquivos .med
 

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prescrição Médica</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .prescription { border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; }
+        .changes { background-color: #f0f0f0; padding: 10px; border-left: 4px solid #007bff; }
+        h2 { color: #333; }
+        pre { white-space: pre-wrap; }
+        .removed { color: #dc3545; }
+        .added { color: #28a745; }
+        .prescription-list {
+            padding-left: 20px;
+        }
+        .prescription-list li {
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        .prescription-list strong {
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+        .prescription-timeline {
+            margin-top: 30px;
+        }
+        .prescription-timeline h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+            margin-bottom: 30px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e9ecef;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+            padding-left: 10px;
+        }
+        .timeline-marker {
+            position: absolute;
+            left: -22px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .timeline-marker.initial { background: #28a745; }
+        .timeline-marker.increase { background: #007bff; }
+        .timeline-marker.decrease { background: #dc3545; }
+        .timeline-marker.other { background: #6c757d; }
+        .timeline-content {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border-left: 3px solid #dee2e6;
+        }
+        .timeline-content strong {
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <h1>Prescrição Médica</h1>
+
+    <div class="prescription">
+        <h2>Receita</h2>
+        <ol class="prescription-list"><li><strong>PROLOPA BD</strong><br>1/2 COMPRIMIDO 12/12 HORAS</li><li><strong>VENLAFAXINA 37,5MG</strong><br>1 UNIDADE NOITE</li></ol>
+    </div>
+
+    <div class="prescription changes">
+        <h2>Alterações</h2>
+        <pre>Mudanças para PROLOPA BD:
+<span class="removed">- posologia: 4/4 HORAS</span>
+<span class="added">+ posologia: 2/2 HORAS</span>
+Mudanças para VENLAFAXINA:
+<span class="removed">- dosage: 37,5MG</span>
+<span class="added">+ dosage: 75MG</span></pre>
+    </div>
+
+    <div class="prescription">
+        <h2>Evolução das Prescrições</h2>
+        <div class="prescription-timeline"><h3>VENLAFAXINA</h3><div class="timeline"><div class="timeline-item">
+                    <div class="timeline-marker initial">●</div>
+                    <div class="timeline-content">
+                        <strong>03/09</strong> - Prescrição Inicial
+                    </div>
+                </div><div class="timeline-item">
+                    <div class="timeline-marker increase">▲</div>
+                    <div class="timeline-content">
+                        <strong>06/09</strong> - Aumento - 37,5MG → 75MG
+                    </div>
+                </div></div><h3>PROLOPA BD</h3><div class="timeline"><div class="timeline-item">
+                    <div class="timeline-marker initial">●</div>
+                    <div class="timeline-content">
+                        <strong>03/09</strong> - Prescrição Inicial
+                    </div>
+                </div><div class="timeline-item">
+                    <div class="timeline-marker increase">▲</div>
+                    <div class="timeline-content">
+                        <strong>06/09</strong> - Aumento - 1/2 COMPRIMIDO → 2 COMPRIMIDOS
+                    </div>
+                </div><div class="timeline-item">
+                    <div class="timeline-marker increase">▲</div>
+                    <div class="timeline-content">
+                        <strong>06/09</strong> - Aumento - 4/4 HORAS → 2/2 HORAS
+                    </div>
+                </div></div></div>
+    </div>
+
+</body>
+</html>

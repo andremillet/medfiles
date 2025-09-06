@@ -67,12 +67,10 @@ fn main() {
                 }
             }
         }
+    } else if is_new_user() {
+        greet();
     } else {
-        if is_new_user() {
-            greet();
-        } else {
-            println!("Usuário não configurado. Execute 'medfiles config'.");
-        }
+        println!("Usuário não configurado. Execute 'medfiles config'.");
     }
 }
 
@@ -92,8 +90,24 @@ fn greet() {
     if choice == "1" {
         println!("Recurso ainda em desenvolvimento.");
     } else if choice == "2" {
-        let prescriptions = conduta_handler();
+        let (prescriptions, prescription_returns) = conduta_handler();
         println!("{}", prescriptions);
+        print!("Deseja imprimir a prescrição? (s/n): ");
+        io::stdout().flush().unwrap();
+        let mut print_choice = String::new();
+        io::stdin().read_line(&mut print_choice).unwrap();
+        let print_choice = print_choice.trim().to_lowercase();
+        if print_choice == "s" || print_choice == "sim" {
+            // Load history data for the graph
+            let history_path = "history.json";
+            let history: Vec<(String, String, String, String, String, String)> = if std::path::Path::new(history_path).exists() {
+                let content = fs::read_to_string(history_path).unwrap_or("[]".to_string());
+                serde_json::from_str(&content).unwrap_or(vec![])
+            } else {
+                vec![]
+            };
+            prescription_printer(&prescription_returns, &history);
+        }
     } else {
         println!("Escolha inválida.");
     }
@@ -190,7 +204,6 @@ fn create_user() {
 
     if choice == "1" {
         println!("SMS indisponível. Escolha email.");
-        return;
     } else if choice == "2" {
         let token = generate_token();
         if send_email(&email, &token) {
@@ -215,11 +228,33 @@ fn is_prescription(line: &str) -> bool {
     prefixes.iter().any(|&p| line.trim().starts_with(p))
 }
 
+fn extract_medication_from_return(return_msg: &str) -> Option<String> {
+    // Parse medication name from return messages like:
+    // "ADICIONADO MEDICATION, DOSAGE, : DOSAGE_OBS POSOLOGIA à lista de medicações em uso;"
+    // "Mudanças para MEDICATION:"
+
+    if return_msg.starts_with("ADICIONADO ") {
+        // Extract from "ADICIONADO MEDICATION, ..."
+        if let Some(comma_pos) = return_msg.find(',') {
+            let medication_part = &return_msg[11..comma_pos]; // Skip "ADICIONADO "
+            return Some(medication_part.trim().to_string());
+        }
+    } else if return_msg.starts_with("Mudanças para ") {
+        // Extract from "Mudanças para MEDICATION:"
+        if let Some(colon_pos) = return_msg.find(':') {
+            let medication_part = &return_msg[14..colon_pos]; // Skip "Mudanças para "
+            return Some(medication_part.trim().to_string());
+        }
+    }
+
+    None
+}
+
 fn prescription_grabber(conduta_lines: Vec<String>) -> Vec<String> {
     conduta_lines.into_iter().filter(|line| is_prescription(line)).collect()
 }
 
-fn conduta_handler() -> String {
+fn conduta_handler() -> (String, Vec<String>) {
     let mut files = vec![];
     for entry in fs::read_dir(".").unwrap() {
         let entry = entry.unwrap();
@@ -233,6 +268,7 @@ fn conduta_handler() -> String {
     files.sort_by_key(|&(_, time)| time);
     let mut results = vec![];
     let mut all_changes: Vec<(String, String, String, String, String, String)> = vec![];
+    let mut latest_prescription_returns: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     for (path, modified) in files {
         let content = fs::read_to_string(&path).unwrap();
         let lines: Vec<&str> = content.lines().collect();
@@ -248,8 +284,16 @@ fn conduta_handler() -> String {
             }
         }
         let prescriptions = prescription_grabber(conduta_lines);
-        let (output, changes) = prescription_handler(prescriptions, modified);
+        let (output, prescription_returns, changes) = prescription_handler(prescriptions, modified);
         all_changes.extend(changes);
+
+        // Filter to keep only the most recent change per medication
+        for return_msg in prescription_returns {
+            // Extract medication name from the return message
+            if let Some(medication) = extract_medication_from_return(&return_msg) {
+                latest_prescription_returns.insert(medication, return_msg);
+            }
+        }
         if !output.is_empty() {
             let datetime = chrono::DateTime::<chrono::Local>::from(modified);
             let date_str = datetime.format("%d/%m/%Y").to_string();
@@ -269,10 +313,11 @@ fn conduta_handler() -> String {
     fs::write(history_path, history_json).unwrap();
 
     let graph = prescription_graphs(&history);
-    format!("{}\n{}", graph, results.join("\n---\n"))
+    let filtered_returns: Vec<String> = latest_prescription_returns.values().cloned().collect();
+    (format!("{}\n{}", graph, results.join("\n---\n")), filtered_returns)
 }
 
-fn prescription_handler(prescriptions: Vec<String>, modified: std::time::SystemTime) -> (String, Vec<(String, String, String, String, String, String)>) {
+fn prescription_handler(prescriptions: Vec<String>, modified: std::time::SystemTime) -> (String, Vec<String>, Vec<(String, String, String, String, String, String)>) {
     let mut medications: HashMap<String, HashMap<String, String>> = if is_medication() {
         let content = fs::read_to_string("medications.json").unwrap_or("".to_string());
         serde_json::from_str(&content).unwrap_or(HashMap::new())
@@ -293,7 +338,7 @@ fn prescription_handler(prescriptions: Vec<String>, modified: std::time::SystemT
         let recipe_content = recipes.join("\n\n");
         fs::write("prescription_recipe.txt", recipe_content).unwrap();
     }
-    (returns.join("\n"), changes)
+    (returns.join("\n"), returns, changes)
 }
 
 fn is_medication() -> bool {
@@ -427,11 +472,22 @@ fn prescription_finalizer(items: Vec<Prescription>, medications: &mut HashMap<St
             );
             prescription_return.push(ret);
 
-            let line1 = format!("{} {}", item.medication, item.dosage);
-            let line2 = if item.posology_observations.is_empty() {
-                format!("{} de {}", item.dosage_observations, item.posologia)
+            let line1 = if item.dosage == "1 UNIDADE" {
+                item.medication.to_uppercase()
             } else {
-                format!("{} de {}, por {}", item.dosage_observations, item.posologia, item.posology_observations)
+                format!("{} {}", item.medication.to_uppercase(), item.dosage)
+            };
+
+            let dosage_obs = if item.dosage_observations.is_empty() {
+                "1 UNIDADE".to_string()
+            } else {
+                item.dosage_observations.clone()
+            };
+
+            let line2 = if item.posology_observations.is_empty() {
+                format!("{} {}", dosage_obs, item.posologia)
+            } else {
+                format!("{} {}, por {}", dosage_obs, item.posologia, item.posology_observations)
             };
             let recipe = format!("{}\n{}", line1, line2);
             prescription_recipe.push(recipe);
@@ -577,5 +633,280 @@ fn medication_list_tokenizer(line: &str) -> HashMap<String, String> {
     map.insert("objective".to_string(), objective);
 
     map
+}
+
+fn parse_prescription_to_list(recipe_content: &str) -> String {
+    let mut html = String::from("<ol class=\"prescription-list\">");
+
+    for medication_block in recipe_content.split("\n\n") {
+        let lines: Vec<&str> = medication_block.lines().collect();
+        if lines.len() >= 2 {
+            let medication_name = lines[0];
+            let dosage_info = lines[1];
+            html.push_str(&format!(
+                "<li><strong>{}</strong><br>{}</li>",
+                medication_name, dosage_info
+            ));
+        }
+    }
+
+    html.push_str("</ol>");
+    html
+}
+
+fn prescription_graphs_html(changes: &Vec<(String, String, String, String, String, String)>) -> String {
+    if changes.is_empty() {
+        return String::new();
+    }
+
+    let mut medications: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for (med, _, _, _, _, _) in changes {
+        medications.insert(med.clone());
+    }
+
+    let mut sorted_changes: Vec<_> = changes.iter().map(|(med, time_str, field, old, new, cmd)| {
+        let time = chrono::NaiveDateTime::parse_from_str(time_str, "%Y-%m-%d %H:%M:%S").unwrap_or(chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap());
+        (med.clone(), time, field.clone(), old.clone(), new.clone(), cmd.clone())
+    }).collect::<Vec<_>>();
+    sorted_changes.sort_by_key(|(_, time, _, _, _, _)| *time);
+
+    let mut html = String::from("<div class=\"prescription-timeline\">");
+
+    for med in medications {
+        html.push_str(&format!("<h3>{}</h3>", med));
+        html.push_str("<div class=\"timeline\">");
+
+        let med_changes: Vec<_> = sorted_changes.iter().filter(|(m, _, _, _, _, _)| m == &med).collect();
+
+        // Group by timestamp and command
+        let mut unique_events: Vec<(chrono::NaiveDateTime, String, String, String)> = vec![];
+        for (_, time, field, old, new, command) in &med_changes {
+            if !unique_events.iter().any(|(t, c, _, _)| t == time && c == command) {
+                unique_events.push((*time, command.clone(), field.clone(), format!("{} → {}", old, new)));
+            }
+        }
+        unique_events.sort_by_key(|(time, _, _, _)| *time);
+
+        for (time, command, field, details) in unique_events {
+            let date_str = time.format("%d/%m").to_string();
+            let (marker_class, marker_symbol, event_description) = match command.as_str() {
+                "PRESCRIBE" => ("initial", "●", "Prescrição Inicial".to_string()),
+                "INCREASE" => ("increase", "▲", format!("Aumento - {}", details)),
+                "DECREASE" => ("decrease", "▼", format!("Diminuição - {}", details)),
+                _ => ("other", "●", format!("{} - {}", command, details)),
+            };
+
+            html.push_str(&format!(
+                "<div class=\"timeline-item\">
+                    <div class=\"timeline-marker {}\">{}</div>
+                    <div class=\"timeline-content\">
+                        <strong>{}</strong> - {}
+                    </div>
+                </div>",
+                marker_class, marker_symbol, date_str, event_description
+            ));
+        }
+
+        html.push_str("</div>");
+    }
+
+    html.push_str("</div>");
+    html
+}
+
+fn ansi_to_html(text: &str) -> String {
+    text.replace("\x1b[31m", "<span class=\"removed\">")
+        .replace("\x1b[32m", "<span class=\"added\">")
+        .replace("\x1b[0m", "</span>")
+}
+
+fn generate_html_header(title: &str) -> String {
+    format!(r#"<!DOCTYPE html>
+<html>
+<head>
+    <title>{}</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 40px; }}
+        .prescription {{ border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; }}
+        .changes {{ background-color: #f0f0f0; padding: 10px; border-left: 4px solid #007bff; }}
+        h2 {{ color: #333; }}
+        pre {{ white-space: pre-wrap; }}
+        .removed {{ color: #dc3545; }}
+        .added {{ color: #28a745; }}
+        .prescription-list {{
+            padding-left: 20px;
+        }}
+        .prescription-list li {{
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }}
+        .prescription-list strong {{
+            color: #2c3e50;
+            font-size: 1.1em;
+        }}
+        .prescription-timeline {{
+            margin-top: 30px;
+        }}
+        .prescription-timeline h3 {{
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }}
+        .timeline {{
+            position: relative;
+            padding-left: 30px;
+            margin-bottom: 30px;
+        }}
+        .timeline::before {{
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e9ecef;
+        }}
+        .timeline-item {{
+            position: relative;
+            margin-bottom: 20px;
+            padding-left: 10px;
+        }}
+        .timeline-marker {{
+            position: absolute;
+            left: -22px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .timeline-marker.initial {{ background: #28a745; }}
+        .timeline-marker.increase {{ background: #007bff; }}
+        .timeline-marker.decrease {{ background: #dc3545; }}
+        .timeline-marker.other {{ background: #6c757d; }}
+        .timeline-content {{
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border-left: 3px solid #dee2e6;
+        }}
+        .timeline-content strong {{
+            color: #495057;
+        }}
+    </style>
+</head>
+<body>
+    <h1>{}</h1>
+"#, title, title)
+}
+
+fn generate_recipe_section(recipe_list_html: &str) -> String {
+    format!(r#"
+    <div class="prescription">
+        <h2>Receita</h2>
+        {}
+    </div>
+"#, recipe_list_html)
+}
+
+fn generate_changes_section(returns_content: &str) -> String {
+    format!(r#"
+    <div class="prescription changes">
+        <h2>Alterações</h2>
+        <pre>{}</pre>
+    </div>
+"#, returns_content)
+}
+
+fn generate_timeline_section(graph_html: &str) -> String {
+    format!(r#"
+    <div class="prescription">
+        <h2>Evolução das Prescrições</h2>
+        {}
+    </div>
+"#, graph_html)
+}
+
+fn generate_html_footer() -> String {
+    "\n</body>\n</html>".to_string()
+}
+
+fn generate_complete_html(
+    recipe_list_html: &str,
+    returns_content: &str,
+    graph_html: &str
+) -> String {
+    let mut html = generate_html_header("Prescrição Médica");
+    html.push_str(&generate_recipe_section(recipe_list_html));
+    html.push_str(&generate_changes_section(returns_content));
+    html.push_str(&generate_timeline_section(graph_html));
+    html.push_str(&generate_html_footer());
+    html
+}
+
+fn prescription_printer(prescription_returns: &[String], graph_data: &Vec<(String, String, String, String, String, String)>) {
+    // Read prescription recipe content
+    let recipe_content = fs::read_to_string("prescription_recipe.txt")
+        .unwrap_or_else(|_| "Nenhuma receita encontrada.".to_string());
+
+    // Format prescription returns with ANSI to HTML conversion
+    let returns_content = if prescription_returns.is_empty() {
+        "Nenhuma alteração encontrada.".to_string()
+    } else {
+        prescription_returns
+            .iter()
+            .map(|line| ansi_to_html(line))
+            .collect::<Vec<String>>()
+            .join("\n")
+    };
+
+    // Parse prescription recipe into numbered list
+    let recipe_list_html = parse_prescription_to_list(&recipe_content);
+
+    // Generate HTML timeline graph
+    let graph_html = prescription_graphs_html(graph_data);
+
+    // Create HTML content using modular functions
+    let html_content = generate_complete_html(&recipe_list_html, &returns_content, &graph_html);
+
+    // Create temporary HTML file
+    let temp_file = "temp_prescription.html";
+    fs::write(temp_file, html_content).unwrap();
+
+    // Open in default browser
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(temp_file)
+            .spawn()
+            .unwrap();
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(&["/C", "start", temp_file])
+            .spawn()
+            .unwrap();
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(temp_file)
+            .spawn()
+            .unwrap();
+    }
+
+    // Clean up temp file after a short delay
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        let _ = fs::remove_file(temp_file);
+    });
 }
 
