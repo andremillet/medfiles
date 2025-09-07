@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Controle MedFiles</title>
+    <title>Todos os Atendimentos</title>
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -164,8 +164,25 @@
         <a href="index.html">Início</a>
     </nav>
     <div class="container">
-        <h1>Painel de Controle MedFiles</h1>
-<p>Bem-vindo ao protótipo MedFiles. Navegue pelos registros médicos por especialidade.</p><div class="dashboard"><div class="card"><h2>Últimos Atendimentos</h2><ul><li><a href="prescription_atendimento_cardiologista_1.med.html">Consulta com Cardiologista - 15/01/2023</a></li><li><a href="prescription_atendimento_dermatologista_1.med.html">Consulta com Dermatologista - 16/01/2023</a></li><li><a href="prescription_atendimento_endocrinologista_1.med.html">Consulta com Endocrinologista - 17/01/2023</a></li></ul></div><div class="card"><h2>Últimas Prescrições</h2><ul><li><a href="prescription_atendimento_cardiologista_1.med.html">LOSARTANA - 1 UNIDADE 50MG 1X AO </a></li><li><a href="prescription_atendimento_dermatologista_1.med.html">CORTICOIDE TÓPICO - 1 UNIDADE APLICAR 2X AO DIA  </a></li><li><a href="prescription_atendimento_endocrinologista_1.med.html">METFORMINA - 1 UNIDADE 1000MG 2X AO </a></li></ul><a href="all-prescriptions.html">Ver Todas</a></div><div class="card"><h2>Todos os Atendimentos</h2><a href="all-attendances.html">Ver Todos</a></div></div>
+        <h1>Todos os Atendimentos</h1>
+<input type="text" id="filter-specialty" placeholder="Filtrar por especialidade..."><input type="date" id="filter-date"><table id="attendances-table"><thead><tr><th>Data</th><th>Especialidade</th><th>Anamnese</th><th>Prescrição</th></tr></thead><tbody><tr data-specialty="Cardiologista" data-date="10/01/2023"><td>10/01/2023</td><td>Consulta com Cardiologista</td><td>PACIENTE COM HISTÓRICO DE HIPERTENSÃO ARTERIAL. QU...</td><td><a href="prescription_atendimento_cardiologista_1.med.html" target="_blank">Imprimir</a></td></tr><tr data-specialty="Dermatologista" data-date="11/01/2023"><td>11/01/2023</td><td>Consulta com Dermatologista</td><td>PACIENTE COM LESÕES ERITEMATOSAS E DESCAMATIVAS NO...</td><td><a href="prescription_atendimento_dermatologista_1.med.html" target="_blank">Imprimir</a></td></tr><tr data-specialty="Endocrinologista" data-date="12/01/2023"><td>12/01/2023</td><td>Consulta com Endocrinologista</td><td>PACIENTE COM DIABETES MELLITUS TIPO 2 DIAGNOSTICAD...</td><td><a href="prescription_atendimento_endocrinologista_1.med.html" target="_blank">Imprimir</a></td></tr><tr data-specialty="Ginecologista" data-date="13/01/2023"><td>13/01/2023</td><td>Consulta com Ginecologista</td><td>PACIENTE COM CICLOS MENSTRUAIS IRREGULARES E DISME...</td><td><a href="prescription_atendimento_ginecologista_1.med.html" target="_blank">Imprimir</a></td></tr><tr data-specialty="Neurologista" data-date="14/01/2023"><td>14/01/2023</td><td>Consulta com Neurologista</td><td>PACIENTE EM ACOMPANHAMENTO DE TREMOR, COM BAIXA RE...</td><td><a href="prescription_atendimento_neurologista_1.med.html" target="_blank">Imprimir</a></td></tr><tr data-specialty="Neurologista" data-date="15/01/2023"><td>15/01/2023</td><td>Consulta com Neurologista</td><td>PACIENTE RETORNA APÓS 1 MÊS DE TRATAMENTO COM PROL...</td><td><a href="prescription_atendimento_neurologista_2.med.html" target="_blank">Imprimir</a></td></tr><tr data-specialty="Outros" data-date="16/01/2023"><td>16/01/2023</td><td>Consulta com Outros</td><td>PACIENTE COM QUEIXA DE INSONIA CRÔNICA. RELATA DIF...</td><td><a href="prescription_atendimento_clinico_geral_1.med.html" target="_blank">Imprimir</a></td></tr><tr data-specialty="Outros" data-date="17/01/2023"><td>17/01/2023</td><td>Consulta com Outros</td><td>PACIENTE RETORNA APÓS 2 SEMANAS. RELATA MELHORA NA...</td><td><a href="prescription_atendimento_clinico_geral_2.med.html" target="_blank">Imprimir</a></td></tr><tr data-specialty="Psiquiatra" data-date="18/01/2023"><td>18/01/2023</td><td>Consulta com Psiquiatra</td><td>PACIENTE COM QUEIXA DE ANSIEDADE GENERALIZADA E EP...</td><td><a href="prescription_atendimento_psiquiatra_1.med.html" target="_blank">Imprimir</a></td></tr><tr data-specialty="Psiquiatra" data-date="19/01/2023"><td>19/01/2023</td><td>Consulta com Psiquiatra</td><td>PACIENTE RETORNA APÓS 1 MÊS. RELATA REDUÇÃO NOS EP...</td><td><a href="prescription_atendimento_psiquiatra_2.med.html" target="_blank">Imprimir</a></td></tr></tbody></table>
+    <script>
+        const table = document.getElementById('attendances-table');
+        const rows = table.querySelectorAll('tbody tr');
+        document.getElementById('filter-specialty').addEventListener('input', filter);
+        document.getElementById('filter-date').addEventListener('input', filter);
+        function filter() {
+            const specialtyQuery = document.getElementById('filter-specialty').value.toLowerCase();
+            const dateQuery = document.getElementById('filter-date').value;
+            rows.forEach(row => {
+                const specialty = row.dataset.specialty.toLowerCase();
+                const date = row.dataset.date;
+                const show = specialty.includes(specialtyQuery) && (!dateQuery || date === dateQuery);
+                row.style.display = show ? '' : 'none';
+            });
+        }
+    </script>
+    
     </div>
 </body>
 </html>
