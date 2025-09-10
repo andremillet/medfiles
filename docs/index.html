@@ -3,169 +3,464 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Controle MedFiles</title>
-    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Ubuntu', sans-serif;
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
-            line-height: 1.6;
-        }
-        .navbar {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 1rem;
-            position: fixed;
-            top: 0;
-            width: 100%;
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .navbar a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-            margin-right: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 80px auto 20px;
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #667eea;
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 2.5em;
-            font-weight: 300;
-        }
-        h2 {
-            color: #764ba2;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 10px;
-            margin-top: 40px;
-            margin-bottom: 20px;
-            font-size: 1.8em;
-            font-weight: 400;
-        }
-        p {
-            margin-bottom: 20px;
-        }
-        ul {
-            list-style: none;
-            padding: 0;
-        }
-        li {
-            background: #f8f9fa;
-            margin: 10px 0;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-        }
-        li a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        li a:hover {
-            text-decoration: underline;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1em;
-            margin-bottom: 20px;
-        }
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: 500;
-            transition: transform 0.2s;
-        }
-        button:hover {
-            transform: translateY(-2px);
-        }
-        .dashboard {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-        }
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            flex: 1 1 300px;
-            max-width: 400px;
-        }
-        .card h2 {
-            color: #667eea;
-            margin-top: 0;
-        }
-        .card ul {
-            list-style: none;
-            padding: 0;
-        }
-        .card li {
-            padding: 5px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .evolution h3 {
-            color: #667eea;
-            margin-top: 20px;
-        }
-        .evolution ul {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        @media (max-width: 768px) {
-            .container {
-                margin: 100px 10px 20px;
-                padding: 20px;
-            }
-            h1 {
-                font-size: 2em;
-            }
-            .dashboard {
-                flex-direction: column;
-            }
-        }
-    </style>
+    <title>MedFiles - SPA Showcase</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <nav class="navbar">
-        <a href="index.html">Início</a>
-    </nav>
-    <div class="container">
-        <h1>Painel de Controle MedFiles</h1>
-<p>Bem-vindo ao protótipo MedFiles. Navegue pelos registros médicos por especialidade.</p><div class="dashboard"><div class="card"><h2>Últimos Atendimentos</h2><ul><li><a href="attendance_atendimento_cardiologista_1.med.html">Consulta com Cardiologista - 15/01/2023</a></li><li><a href="attendance_atendimento_dermatologista_1.med.html">Consulta com Dermatologista - 16/01/2023</a></li><li><a href="attendance_atendimento_endocrinologista_1.med.html">Consulta com Endocrinologista - 17/01/2023</a></li></ul></div><div class="card"><h2>Últimas Prescrições</h2><ul><li><a href="prescription_atendimento_cardiologista_1.med.html">LOSARTANA - 1 UNIDADE 50MG 1X AO </a></li><li><a href="prescription_atendimento_dermatologista_1.med.html">CORTICOIDE TÓPICO - 1 UNIDADE APLICAR 2X AO DIA  </a></li><li><a href="prescription_atendimento_endocrinologista_1.med.html">METFORMINA - 1 UNIDADE 1000MG 2X AO </a></li></ul><a href="all-prescriptions.html">Ver Todas</a></div><div class="card"><h2>Todos os Atendimentos</h2><a href="all-attendances.html">Ver Todos</a></div></div>
+    <!-- Login Section -->
+    <div id="login-section" class="page-section">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="logo">
+                        <i class="fas fa-pills"></i>
+                        <h1>MedFiles</h1>
+                    </div>
+                    <p>Organizador de Prescrições Médicas</p>
+                </div>
+
+                <form id="loginForm" class="login-form">
+                    <div class="form-group">
+                        <label for="email">
+                            <i class="fas fa-envelope"></i>
+                            Email
+                        </label>
+                        <input type="email" id="email" name="email" required
+                               placeholder="seu@email.com" value="teste@medfiles.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">
+                            <i class="fas fa-lock"></i>
+                            Senha
+                        </label>
+                        <input type="password" id="password" name="password" required
+                               placeholder="Digite sua senha" value="teste123">
+                    </div>
+
+                    <button type="submit" class="login-btn">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Entrar
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    <div class="test-user-info">
+                        <h4><i class="fas fa-info-circle"></i> Usuário de Teste</h4>
+                        <p><strong>Email:</strong> teste@medfiles.com</p>
+                        <p><strong>Senha:</strong> teste123</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="features-preview">
+                <div class="feature">
+                    <i class="fas fa-file-medical"></i>
+                    <h3>Organize Prescrições</h3>
+                    <p>Mantenha todas suas prescrições organizadas por medicamento e data</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>Acompanhe Mudanças</h3>
+                    <p>Veja histórico de dosagens e ajustes ao longo do tempo</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-shopping-cart"></i>
+                    <h3>Compra Fácil</h3>
+                    <p>Envie prescrições diretamente para farmácias online</p>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboard-section" class="page-section hidden">
+        <div class="dashboard-container">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <div class="logo">
+                        <i class="fas fa-pills"></i>
+                        <h1>MedFiles</h1>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <i class="fas fa-user"></i>
+                        <span>teste@medfiles.com</span>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Sair
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="dashboard-main">
+                <!-- Stats Cards -->
+                <section class="stats-section">
+                    <h2><i class="fas fa-chart-bar"></i> Visão Geral</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-file-prescription"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="totalPrescriptions">-</h3>
+                                <p>Prescrições</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-pills"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="activeMedications">-</h3>
+                                <p>Medicações Ativas</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-user-md"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="totalProfessionals">-</h3>
+                                <p>Profissionais</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="totalMedications">-</h3>
+                                <p>Total Medicações</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Active Medications -->
+                <section class="medications-section">
+                    <h2><i class="fas fa-pills"></i> Medicações Ativas</h2>
+                    <div class="medications-grid" id="activeMedicationsGrid">
+                        <!-- Medications will be loaded here -->
+                    </div>
+                </section>
+
+                <!-- Recent Prescriptions -->
+                <section class="prescriptions-section">
+                    <h2><i class="fas fa-history"></i> Prescrições Recentes</h2>
+                    <div class="prescriptions-list" id="recentPrescriptions">
+                        <!-- Prescriptions will be loaded here -->
+                    </div>
+                </section>
+
+                <!-- Quick Actions -->
+                <section class="actions-section">
+                    <h2><i class="fas fa-bolt"></i> Ações Rápidas</h2>
+                    <div class="actions-grid">
+                        <button class="action-btn" onclick="showUploadModal()">
+                            <i class="fas fa-upload"></i>
+                            <span>Nova Prescrição</span>
+                        </button>
+                        <button class="action-btn" onclick="showConsolidatedView()">
+                            <i class="fas fa-list"></i>
+                            <span>Visão Consolidada</span>
+                        </button>
+                        <button class="action-btn" onclick="showPharmacyModal()">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span>Enviar para Farmácia</span>
+                        </button>
+                        <button class="action-btn" onclick="showReports()">
+                            <i class="fas fa-file-pdf"></i>
+                            <span>Relatórios</span>
+                        </button>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Prescription Detail Section -->
+    <div id="prescription-detail-section" class="page-section hidden">
+        <div class="prescription-container">
+            <!-- Header -->
+            <header class="prescription-header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goBack()">
+                        <i class="fas fa-arrow-left"></i>
+                        Voltar
+                    </button>
+                    <div class="prescription-title">
+                        <h1><i class="fas fa-file-prescription"></i> Prescrição</h1>
+                        <div class="prescription-meta">
+                            <span id="prescriptionDate">-</span>
+                            <span id="professionalName">-</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="action-btn edit-btn">
+                        <i class="fas fa-edit"></i>
+                        Editar
+                    </button>
+                    <button class="action-btn pharmacy-btn">
+                        <i class="fas fa-shopping-cart"></i>
+                        Farmácia
+                    </button>
+                </div>
+            </header>
+
+            <!-- Prescription Content -->
+            <main class="prescription-content">
+                <!-- Patient Info -->
+                <section class="patient-section">
+                    <h2><i class="fas fa-user"></i> Informações do Paciente</h2>
+                    <div class="patient-info">
+                        <div class="info-item">
+                            <label>Nome:</label>
+                            <span id="patientName">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Data de Nascimento:</label>
+                            <span id="patientBirthDate">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>CPF:</label>
+                            <span id="patientCPF">-</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Medications -->
+                <section class="medications-section">
+                    <h2><i class="fas fa-pills"></i> Medicações Prescritas</h2>
+                    <div class="medications-list" id="medicationsList">
+                        <!-- Medications will be loaded here -->
+                    </div>
+                </section>
+
+                <!-- Professional Info -->
+                <section class="professional-section">
+                    <h2><i class="fas fa-user-md"></i> Profissional Prescritor</h2>
+                    <div class="professional-info">
+                        <div class="info-item">
+                            <label>Nome:</label>
+                            <span id="profName">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Especialidade:</label>
+                            <span id="profSpecialty">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>CRM:</label>
+                            <span id="profCRM">-</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Prescription Notes -->
+                <section class="notes-section">
+                    <h2><i class="fas fa-sticky-note"></i> Observações</h2>
+                    <div class="notes-content" id="prescriptionNotes">
+                        <p>Nenhuma observação adicional.</p>
+                    </div>
+                </section>
+            </main>
+
+            <!-- Footer -->
+            <footer class="prescription-footer">
+                <div class="footer-info">
+                    <p><strong>MedFiles</strong> - Sistema de Organização de Prescrições Médicas</p>
+                    <p>Prescrição gerada em <span id="generatedDate">-</span></p>
+                </div>
+                <div class="footer-actions">
+                    <button class="secondary-btn">
+                        <i class="fas fa-print"></i>
+                        Imprimir
+                    </button>
+                    <button class="secondary-btn">
+                        <i class="fas fa-download"></i>
+                        Baixar PDF
+                    </button>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Medication History Section -->
+    <div id="medication-history-section" class="page-section hidden">
+        <div class="history-container">
+            <!-- Header -->
+            <header class="history-header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goBack()">
+                        <i class="fas fa-arrow-left"></i>
+                        Voltar
+                    </button>
+                    <div class="medication-info">
+                        <h1><i class="fas fa-pills"></i> Histórico de Medicação</h1>
+                        <div class="medication-name" id="medicationName">Carregando...</div>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="action-btn export-btn">
+                        <i class="fas fa-download"></i>
+                        Exportar
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="history-content">
+                <!-- Current Status -->
+                <section class="current-status">
+                    <h2><i class="fas fa-info-circle"></i> Status Atual</h2>
+                    <div class="status-card" id="currentStatus">
+                        <!-- Current status will be loaded here -->
+                    </div>
+                </section>
+
+                <!-- Dose Evolution Chart -->
+                <section class="dose-chart">
+                    <h2><i class="fas fa-chart-line"></i> Evolução da Dose</h2>
+                    <div class="chart-container">
+                        <canvas id="doseChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Change History -->
+                <section class="change-history">
+                    <h2><i class="fas fa-history"></i> Histórico de Mudanças</h2>
+                    <div class="history-timeline" id="changeTimeline">
+                        <!-- Change history will be loaded here -->
+                    </div>
+                </section>
+
+                <!-- Related Prescriptions -->
+                <section class="related-prescriptions">
+                    <h2><i class="fas fa-file-prescription"></i> Prescrições Relacionadas</h2>
+                    <div class="prescriptions-list" id="relatedPrescriptions">
+                        <!-- Related prescriptions will be loaded here -->
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-upload"></i> Nova Prescrição</h3>
+                <button class="modal-close" onclick="closeModal('uploadModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area" id="modalUploadArea">
+                    <div class="upload-content">
+                        <div class="upload-icon">📎</div>
+                        <p>Clique aqui ou arraste um PDF ou imagem</p>
+                        <button type="button" class="upload-button">
+                            📤 Escolher Arquivo
+                        </button>
+                        <input type="file" id="modalFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp" hidden>
+                    </div>
+                </div>
+                <div id="uploadResult" class="upload-result" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="consolidatedModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3><i class="fas fa-list"></i> Prescrição Consolidada</h3>
+                <button class="modal-close" onclick="closeModal('consolidatedModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="consolidatedMedications">
+                    <!-- Consolidated medications will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pharmacyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-shopping-cart"></i> Enviar para Farmácia</h3>
+                <button class="modal-close" onclick="closeModal('pharmacyModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="pharmacy-placeholder">
+                    <div class="placeholder-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <h4>Funcionalidade em Desenvolvimento</h4>
+                    <p>Esta funcionalidade permitirá enviar suas prescrições diretamente para farmácias online parceiras.</p>
+                    <div class="pharmacy-features">
+                        <div class="feature">
+                            <i class="fas fa-check"></i>
+                            <span>Entrega em domicílio</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-check"></i>
+                            <span>Preços competitivos</span>
+                        </div>
+                        <div class="feature">
+                            <i class="fas fa-check"></i>
+                            <span>Acompanhamento de pedidos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="reportsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-file-pdf"></i> Relatórios</h3>
+                <button class="modal-close" onclick="closeModal('reportsModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="reports-placeholder">
+                    <div class="placeholder-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h4>Relatórios Disponíveis</h4>
+                    <div class="report-options">
+                        <button class="report-btn">
+                            <i class="fas fa-file-pdf"></i>
+                            <span>Lista de Medicações Ativas</span>
+                        </button>
+                        <button class="report-btn">
+                            <i class="fas fa-file-pdf"></i>
+                            <span>Histórico de Mudanças</span>
+                        </button>
+                        <button class="report-btn">
+                            <i class="fas fa-file-pdf"></i>
+                            <span>Relatório para Médicos</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
